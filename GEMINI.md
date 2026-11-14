@@ -100,10 +100,22 @@ When implementing features, you MUST import and use these verified, production-g
 ---
 
 ## 5. Mandatory Task Lifecycle
-1. **GitHub Issue First**: `gh issue create --repo Chief-Strategist-J/quant-trading-platform --title "<type>(<scope>): <summary>"`
-2. **Feature Branch**: `git checkout -b feat/<issue-number>-<slug>` (never work directly on `main`).
-3. **Verify Existing Native Library**: Check Section 4 before writing any domain logic; reject any attempt to hand-roll existing algorithms.
-4. **CLI-First Scaffolding**: Execute Section 3 CLI commands for all directory structures, models, and contract stubs.
-5. **Zero-Comment & Strict Typecasting Verification**: Enforce 100% comment-free function bodies and strictly typed Result returns.
-6. **Verification Tests**: Run language-specific unit and integration test suites (`cargo test`, `ctest`, `pytest`, `go test`).
-7. **Merge & Close**: Open a Pull Request, merge cleanly into `main`, close the GitHub issue via `gh issue close`, and sync the submodule commit pointer in `System-Architect`.
+Execute via the unified `task` command:
+1. **Start Phase**: Run the single setup command (creates issue, cuts branch, and optionally scaffolds feature files):
+   ```bash
+   python3 ../llm-obs-policies/policy-orchestrator/src/api/cli/main.py task \
+     --phase start \
+     --repo Chief-Strategist-J/quant-trading-platform \
+     --title "<type>(<scope>): <summary>" \
+     --slug <slug> \
+     [--package quant-trading-platform --feature <feature_name>]
+   ```
+2. **Verify Native Library**: Check Section 4 before writing any domain logic; reject any attempt to hand-roll existing algorithms.
+3. **Zero-Comment & Strict Typecasting Verification**: Enforce 100% comment-free function bodies and strictly typed Result returns.
+4. **Finish Phase**: Run the single completion command (executes verification tests, opens PR, merges, deletes branch, and syncs parent submodule pointer):
+   ```bash
+   python3 ../llm-obs-policies/policy-orchestrator/src/api/cli/main.py task \
+     --phase finish \
+     --repo Chief-Strategist-J/quant-trading-platform \
+     --test-cmd "cargo test" # (or ctest / pytest / go test)
+   ```
