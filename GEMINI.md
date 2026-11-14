@@ -1,22 +1,109 @@
-# Agent Execution Guidelines & Mandates
+# Agent Execution Guidelines & Institutional Mandates: Quant Platform
 
 ## 1. Advisor Persona & Pre-execution Gate
-- Before touching ANY code or planning, you must act as an Advisor:
+- Before touching ANY code, folder, or planning, you MUST act as an Advisor:
   * Never start with agreement. First sentence must challenge assumptions or identify missing gaps.
   * Rate confidence on claims ([Certain], [Likely], [Guessing]).
-  * Disagree with structure: state reason, alternative, and specific downside.
-  * Do not make direct code changes without explicit user approval.
-- Before writing, modifying, or refactoring code, you MUST re-read and strictly adhere to the policies hosted at https://github.com/Scaibu/llm-obs-policies (or in submodule `llm-obs-policies/`):
-  * https://github.com/Scaibu/llm-obs-policies/blob/main/rules/folder-structure/-1-adviser.md
-  * https://github.com/Scaibu/llm-obs-policies/blob/main/rules/folder-structure/0-package-folder-writing-rule.md
-  * https://github.com/Scaibu/llm-obs-policies/tree/main/rules/folder-structure/function-structures
-  * https://github.com/Scaibu/llm-obs-policies/blob/main/rules/database/migrations/01-schema-migrations-and-code-guidelines.md
-  * https://github.com/Scaibu/llm-obs-policies/blob/main/rules/code-quality/coding-standards/03-strict-typecasting-rules.md
+  * Disagree with structure: state reason, alternative, and specific downside:
+    "I disagree because [reason]. Here's what I'd do instead [alternative]. The risk in your approach is [specific downside]."
+  * Do NOT make direct code changes without explicit user approval.
+- Before writing, modifying, or refactoring code, you MUST re-read and strictly adhere to the policies hosted at `https://github.com/Scaibu/llm-obs-policies` (or submodule `llm-obs-policies/`):
+  * `rules/folder-structure/-1-adviser.md`
+  * `rules/folder-structure/0-package-folder-writing-rule.md`
+  * `rules/folder-structure/1-feature-folder-writing-rule.md`
+  * `rules/code-quality/coding-standards/03-strict-typecasting-rules.md`
+  * `rules/database/migrations/01-schema-migrations-and-code-guidelines.md`
 
-## 2. Mandatory Task Lifecycle
-1. **GitHub Issue First**: Before any code or configuration change, create or link a GitHub issue via `gh issue create`.
-2. **Feature Branch**: Never work directly on `main` without instruction. Create a branch named `feat/<issue-number>-<feature-slug>` or `fix/<issue-number>-<slug>`.
-3. **Continuous Rule Compliance**: Check folder hierarchy, function structures, strict typecasting, and SQL query definitions against the policy documents above.
-4. **Tool-First Generation**: Wherever CLI scaffolding or generator scripts are available (Go, Python, TypeScript, Rust, C++, OpenAPI/gRPC generators, REST APIs), prioritize using command-line tools to generate structures, contracts, models, and boilerplate instead of writing everything manually.
-5. **Verification**: Run all package tests (`go test ./...` or language equivalent) and verify clean passes before any commit.
-6. **Merge & Close**: Open a PR or merge the feature branch cleanly into `main`, then close the GitHub issue via `gh issue close`.
+---
+
+## 2. Strict Negative Invariants (What You Must NEVER Do)
+1. **NEVER Hand-Craft Math, Parsing, or Algorithmic Logic (Existing Native Library Invariant)**:
+   - Hand-rolling math, numerical solvers, statistical routines, technical indicators, or data parsers from scratch is STRICTLY PROHIBITED.
+   - Always verify if an established, production-grade library already exists for the task.
+   - You MUST import and utilize existing native libraries (see Section 4) instead of writing custom mathematical or parsing implementations.
+2. **NEVER Manually Write Boilerplate or Scaffolding Files**:
+   - Manually typing out 14 empty hexagonal feature files or raw DTO classes is STRICTLY FORBIDDEN.
+   - Always invoke the CLI tools and code generators referenced in Section 3 to scaffold structures, compile schemas, and generate models from YAML/Protobuf.
+3. **NEVER Write Mid-Function Comments**:
+   - Zero inline comments inside function or method bodies across C++, Rust, Python, and Go.
+   - Document the full architectural algorithm blueprint exclusively in the top-of-file header docblock.
+4. **NEVER Use Untyped Data Containers**:
+   - Prohibit untyped `dict`, `Any`, `interface{}`, `void*`, or raw JSON strings.
+   - All inputs, outputs, and internal states must be strictly typecasted via Pydantic/dataclasses (Python), Serde structs (Rust), C++20 typed structs (C++), or Go structs.
+5. **NEVER Throw Unhandled Exceptions or Panic**:
+   - Backend services are strictly stateless. All operations must return strongly-typed `Result<T, DomainError>` envelopes.
+
+---
+
+## 3. Tool-First Generation & CLI Scaffolding Command References
+Before creating files or models manually, execute the corresponding CLI command:
+
+### 3.1 Feature & Subsystem Scaffolding
+Never create feature directories or canonical files manually. Execute the scaffolding CLI:
+```bash
+# Backend Hexagonal Feature Scaffolding (scaffolds all 14 canonical roles with .gitkeep)
+python3 ../llm-obs-policies/policy-orchestrator/src/api/cli/folder_scaffold_cli.py scaffold-feature \
+  --package quant-trading-platform \
+  --name <feature_name> \
+  --base-dir .
+
+# Architecture & Impact Graph Analysis
+python3 ../llm-obs-policies/policy-orchestrator/src/api/cli/folder_scaffold_cli.py analyze-impact \
+  --target <feature_name> \
+  --direction downstream
+```
+
+### 3.2 Automated Model & Schema Generation from YAML / Protobuf
+Never hand-write DTO models, schemas, or network serializations. Generate them directly from specifications:
+```bash
+# Generate Python Pydantic Models from OpenAPI YAML:
+datamodel-codegen --input contracts/openapi/v1.yaml --output contracts/openapi_models.py
+
+# Generate Go Types and Clients from OpenAPI YAML:
+oapi-codegen -generate types,client -package contracts contracts/openapi/v1.yaml > contracts/openapi_models.go
+
+# Generate C++ Models from OpenAPI YAML:
+openapi-generator-cli generate -i contracts/openapi/v1.yaml -g cpp-restsdk -o contracts/generated_cpp/
+
+# Compile Protobuf & gRPC Contracts across C++, Rust, Go, and Python:
+protoc -I=contracts/proto \
+  --cpp_out=src/infra/clients/proto \
+  --go_out=src/infra/clients/proto \
+  --python_out=src/infra/clients/proto \
+  contracts/proto/*.proto
+```
+
+### 3.3 Type-Safe SQL Query Generation
+Never write raw inline SQL strings in repositories. Define parameterized SQL queries and generate type-safe code:
+```bash
+sqlc generate -f database/config/sqlc.yaml
+```
+
+---
+
+## 4. Mandatory Native Library Matrix by Engineering Domain
+When implementing features, you MUST import and use these verified, production-grade native libraries rather than writing custom algorithms:
+
+| Domain | Language | Mandated Native Libraries (Do Not Re-invent) |
+|---|---|---|
+| **Market Data Engineering** | **Rust** (`.rs`) | `tokio` (async runtime), `arrow` / `parquet` (columnar time-series), `serde_json`, `tungstenite` (WebSocket exchange feeds) |
+| **Quantitative Research** | **Python** (`.py`) | `numpy`, `scipy`, `polars` / `pandas`, `statsmodels` (ARIMA, stationarity, unit root tests), `arch` (GARCH, volatility modeling) |
+| **Strategy Development** | **Python** (`.py`) | `ta-lib` / `pandas-ta` (RSI, MACD, Bollinger Bands, ATR), `numba` (vectorized JIT execution) |
+| **Backtesting & Simulation** | **C++** (`.cpp`) | `Eigen` (linear algebra), `boost::container` (cache-aligned flat containers), `tbb` (parallel execution), `fmt` |
+| **Portfolio Management** | **Python** (`.py`) | `cvxpy` (convex optimization, mean-variance QP), `scipy.optimize`, `polars` (correlation matrices) |
+| **Risk Management** | **Rust** (`.rs`) | `statrs` (statistical distributions for VaR/ES), `rayon` (data-parallel Monte Carlo simulation) |
+| **Trading & Execution** | **C++** (`.cpp`) | `QuantLib` (financial mathematics), `boost::lockfree` (lock-free ring buffers for L3 order book matching) |
+| **Derivatives Pricing** | **C++** (`.cpp`) | `QuantLib` (Black-Scholes, Binomial trees, Greeks, Volatility surface interpolation), `Eigen` |
+| **Machine Learning & AI** | **Python** (`.py`) | `torch` / `scikit-learn` (regime detection, predictive inference), `stable-baselines3` (reinforcement learning) |
+| **Production Controls** | **Go** (`.go`) | `grpc-go`, `prometheus/client_golang` (metrics telemetry), `segmentio/kafka-go`, `uber-go/zap` |
+
+---
+
+## 5. Mandatory Task Lifecycle
+1. **GitHub Issue First**: `gh issue create --repo Chief-Strategist-J/quant-trading-platform --title "<type>(<scope>): <summary>"`
+2. **Feature Branch**: `git checkout -b feat/<issue-number>-<slug>` (never work directly on `main`).
+3. **Verify Existing Native Library**: Check Section 4 before writing any domain logic; reject any attempt to hand-roll existing algorithms.
+4. **CLI-First Scaffolding**: Execute Section 3 CLI commands for all directory structures, models, and contract stubs.
+5. **Zero-Comment & Strict Typecasting Verification**: Enforce 100% comment-free function bodies and strictly typed Result returns.
+6. **Verification Tests**: Run language-specific unit and integration test suites (`cargo test`, `ctest`, `pytest`, `go test`).
+7. **Merge & Close**: Open a Pull Request, merge cleanly into `main`, close the GitHub issue via `gh issue close`, and sync the submodule commit pointer in `System-Architect`.
